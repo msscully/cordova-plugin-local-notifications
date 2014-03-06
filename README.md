@@ -70,7 +70,11 @@ More informations can be found [here][PGB_plugin].
 
 ## ChangeLog
 #### Version 0.8.0 (not yet released)
-- [enhancement:] android 2.1 support added (Thanks to **khizarsonu**)
+- [enhancement:] Android 2.x (SDK >= 7) support (Thanks to **khizarsonu**)
+- [enhancement:] Scope parameter for `isScheduled` and `getScheduledIds`
+- [enhancement:] Callbacks for `cancel` & `cancelAll`
+- [enhancement:] `image:` accepts remote URLs and local URIs (Android)
+- [feature:] New Android specific `led:` flag
 
 #### Further informations
 - See [CHANGELOG.md][changelog] to get the full changelog for the plugin.
@@ -130,7 +134,9 @@ Note that only local notifications with an ID can be canceled.
 - See [getScheduledIds][getscheduledids] of how to retrieve a list of IDs of all scheduled local notifications.
 
 ```javascript
-window.plugin.notification.local.cancel(ID);
+window.plugin.notification.local.cancel(ID, function () {
+    // The notification has been canceled
+}, scope);
 ```
 
 ### Cancel all scheduled local notifications
@@ -141,12 +147,14 @@ The method cancels all local notifications even if they have no ID.
 - See the [oncancel][oncancel] event of how a listener can be registered to be notified when a local notification has been canceled.
 
 ```javascript
-window.plugin.notification.local.cancelAll();
+window.plugin.notification.local.cancelAll(function () {
+    // All notifications have been canceled
+}, scope);
 ```
 
 ### Check wether a notification with an ID is scheduled
 To check if a notification with an ID is scheduled, the `notification.local.isScheduled` interface can be used.<br>
-The method takes the ID of the local notification as an argument and a callback function to be called with the result.
+The method takes the ID of the local notification as an argument and a callback function to be called with the result. Optional the scope of the callback can be assigned too.
 
 #### Further informations
 - See [getScheduledIds][getscheduledids] of how to retrieve a list of IDs of all scheduled local notifications.
@@ -154,17 +162,17 @@ The method takes the ID of the local notification as an argument and a callback 
 ```javascript
 window.plugin.notification.local.isScheduled(id, function (isScheduled) {
     // console.log('Notification with ID ' + id + ' is scheduled: ' + isScheduled);
-});
+}, scope);
 ```
 
 ### Retrieve the IDs from all currently scheduled local notifications
 To retrieve the IDs from all currently scheduled local notifications, the `notification.local.isScheduled` interface can be used.<br>
-The method takes a callback function to be called with the result as an array of IDs.
+The method takes a callback function to be called with the result as an array of IDs. Optional the scope of the callback can be assigned too.
 
 ```javascript
-window.plugin.notification.local.getScheduledIds( function (scheduledIds) {
+window.plugin.notification.local.getScheduledIds(function (scheduledIds) {
     // alert('Scheduled IDs: ' + scheduledIds.join(' ,'));
-});
+}, scope);
 ```
 
 ### Get the default values of the local notification properties
@@ -319,16 +327,31 @@ window.plugin.notification.local.setDefaults({ autoCancel: true });
 ### Small and large icons on Android
 By default all notifications will display the app icon. But an specific icon can be defined through the `icon` and `smallIcon` properties.
 
-```javascript
-/**
- * Displays the <package.name>.R.drawable.ic_launcher icon
- */
-window.plugin.notification.local.add({ icon: 'ic_launcher' });
+#### Resource icons
+The following example shows how to display the `<package.name>.R.drawable.ic_launcher`icon as the notifications icon.
 
-/**
- * Displays the android.R.drawable.ic_dialog_email icon
- */
+```javascript
+window.plugin.notification.local.add({ icon: 'ic_launcher' });
+```
+
+See below how to use the `android.R.drawable.ic_dialog_email` icon as the notifications small icon.
+
+```javascript
 window.plugin.notification.local.add({ smallIcon: 'ic_dialog_email' });
+```
+
+#### Local icons
+The `icon` property also accepts local file URIs. The URI points to a relative path within the www folder.
+
+```javascript
+window.plugin.notification.local.add({ icon: 'file://img/logo.png' }); //=> /assets/www/img/logo.png
+```
+
+#### Remote icons
+The `icon` property also accepts remote URLs. If the device cannot download the image, it will fallback to the app icon.
+
+```javascript
+window.plugin.notification.local.add({ icon: 'https://cordova.apache.org/images/cordova_bot.png' });
 ```
 
 ### Notification sound on Android
@@ -396,6 +419,13 @@ To specify a custom interval, the `repeat` property can be assigned with an numb
  * Schedules the notification quarterly every 15 mins
  */
 window.plugin.notification.local.add({ repeat: 15 });
+```
+
+### Change the LED color on Android devices
+The LED color can be specified through the `led` property. By default the color value is white (FFFFFF). Its possible to change that value by setting another hex code.
+
+```javascript
+window.plugin.notification.local.add({ led: 'A0FF05' });
 ```
 
 

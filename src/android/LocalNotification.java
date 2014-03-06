@@ -67,7 +67,7 @@ public class LocalNotification extends CordovaPlugin {
     }
 
     @Override
-    public boolean execute (String action, final JSONArray args, CallbackContext callbackContext) throws JSONException {
+    public boolean execute (String action, final JSONArray args, final CallbackContext command) throws JSONException {
         if (action.equalsIgnoreCase("add")) {
             cordova.getThreadPool().execute( new Runnable() {
                 public void run() {
@@ -78,8 +78,6 @@ public class LocalNotification extends CordovaPlugin {
                     add(options, true);
                 }
             });
-
-            return true;
         }
 
         if (action.equalsIgnoreCase("cancel")) {
@@ -89,10 +87,9 @@ public class LocalNotification extends CordovaPlugin {
 
                     cancel(id);
                     unpersist(id);
+                    command.success();
                 }
             });
-
-            return true;
         }
 
         if (action.equalsIgnoreCase("cancelAll")) {
@@ -100,34 +97,19 @@ public class LocalNotification extends CordovaPlugin {
                 public void run() {
                     cancelAll();
                     unpersistAll();
+                    command.success();
                 }
             });
-
-            return true;
         }
 
         if (action.equalsIgnoreCase("isScheduled")) {
             String id = args.optString(0);
 
-            isScheduled(id, callbackContext);
-
-            return true;
+            isScheduled(id, command);
         }
 
         if (action.equalsIgnoreCase("getScheduledIds")) {
-            getScheduledIds(callbackContext);
-
-            return true;
-        }
-        
-        if(action.equalsIgnoreCase("clearall")){
-        	clearAll();
-        	return true;
-        }
-        if(action.equalsIgnoreCase("clear")){
-        	String id = args.optString(0);
-        	clear(id);
-        	return true;
+            getScheduledIds(command);
         }
 
         if (action.equalsIgnoreCase("deviceready")) {
@@ -136,24 +118,27 @@ public class LocalNotification extends CordovaPlugin {
                     deviceready();
                 }
             });
+        }
 
+        if(action.equalsIgnoreCase("clearall")){
+            clearAll();
+            return true;
+        }
+        if(action.equalsIgnoreCase("clear")){
+            String id = args.optString(0);
+            clear(id);
             return true;
         }
 
         if (action.equalsIgnoreCase("pause")) {
             isInBackground = true;
-
-            return true;
         }
 
         if (action.equalsIgnoreCase("resume")) {
             isInBackground = false;
-
-            return true;
         }
 
-        // Returning false results in a "MethodNotFound" error.
-        return false;
+        return true;
     }
 
     /**
@@ -211,7 +196,7 @@ public class LocalNotification extends CordovaPlugin {
         Intent intent = new Intent(context, Receiver.class)
             .setAction("" + notificationId);
 
-        PendingIntent pi       = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        PendingIntent pi       = PendingIntent.getBroadcast(context, 0, intent, 0);
         AlarmManager am        = getAlarmManager();
 
         am.cancel(pi);
@@ -239,32 +224,32 @@ public class LocalNotification extends CordovaPlugin {
         }
         clearAll();
     }
-    
+
     /**
      * Clear all notifications that were created by this plugin.
-     * 
-     * This will not remove future pending alarms.  It will only 
+     *
+     * This will not remove future pending alarms.  It will only
      * clear alarms that are in the notification area.
-     * 
+     *
      */
     public static void clearAll(){
-    	NotificationManager nc     = getNotificationManager();
-    	nc.cancelAll();
+        NotificationManager nc     = getNotificationManager();
+        nc.cancelAll();
     }
-    
+
     /**
      * Clear notification that was created by this plugin.
-     * 
-     * This will not remove future pending alarms.  It will only 
+     *
+     * This will not remove future pending alarms.  It will only
      * clear alarms that are in the notification area.
-     * 
+     *
      * @param id
      *          The notification ID to be check.
-     * 
+     *
      */
     public static void clear(String id){
-    	NotificationManager nc = getNotificationManager();
-    	try {
+        NotificationManager nc = getNotificationManager();
+        try {
             nc.cancel(Integer.parseInt(id));
         } catch (Exception e) {}
     }
@@ -276,13 +261,13 @@ public class LocalNotification extends CordovaPlugin {
      *          The notification ID to be check.
      * @param callbackContext
      */
-    public static void isScheduled (String id, CallbackContext callbackContext) {
+    public static void isScheduled (String id, CallbackContext command) {
         SharedPreferences settings = getSharedPreferences();
         Map<String, ?> alarms      = settings.getAll();
         boolean isScheduled        = alarms.containsKey(id);
         PluginResult result        = new PluginResult(PluginResult.Status.OK, isScheduled);
 
-        callbackContext.sendPluginResult(result);
+        command.sendPluginResult(result);
     }
 
     /**
@@ -290,13 +275,13 @@ public class LocalNotification extends CordovaPlugin {
      *
      * @param callbackContext
      */
-    public static void getScheduledIds (CallbackContext callbackContext) {
+    public static void getScheduledIds (CallbackContext command) {
         SharedPreferences settings = getSharedPreferences();
         Map<String, ?> alarms      = settings.getAll();
         Set<String> alarmIds       = alarms.keySet();
         JSONArray pendingIds       = new JSONArray(alarmIds);
 
-        callbackContext.success(pendingIds);
+        command.success(pendingIds);
     }
 
     /**

@@ -58,10 +58,14 @@ LocalNotification.prototype = {
 
     /**
      * @private
-     * Merge settings with default values
+     *
+     * Merges custom properties with the default values.
      *
      * @param {Object} options
+     *      Set of custom values
+     *
      * @retrun {Object}
+     *      The merged property list
      */
     mergeWithDefaults: function (options) {
         var defaults = this.getDefaults();
@@ -77,6 +81,11 @@ LocalNotification.prototype = {
 
     /**
      * @private
+     *
+     * Merges the platform specific properties into the default properties.
+     *
+     * @return {Object}
+     *      The default properties for the platform
      */
     applyPlatformSpecificOptions: function () {
         var defaults = this._defaults;
@@ -86,6 +95,7 @@ LocalNotification.prototype = {
             defaults.icon       = 'icon';
             defaults.smallIcon  = null;
             defaults.ongoing    = false;
+            defaults.led        = 'FFFFFF'; /*RRGGBB*/
             defaults.sound      = 'TYPE_NOTIFICATION'; break;
         case 'iOS':
             defaults.sound      = ''; break;
@@ -94,13 +104,39 @@ LocalNotification.prototype = {
             defaults.image      = null;
             defaults.wideImage  = null;
         };
+
+        return defaults;
+    },
+
+    /**
+     * @private
+     *
+     * Creates a callback, which will be executed within a specific scope.
+     *
+     * @param {Function} callbackFn
+     *      The callback function
+     * @param {Object} scope
+     *      The scope for the function
+     *
+     * @return {Function}
+     *      The new callback function
+     */
+    createCallbackFn: function (callbackFn, scope) {
+        return function () {
+            if (typeof callbackFn == 'function') {
+                callbackFn.apply(scope || this, arguments);
+            }
+        }
     },
 
     /**
      * Add a new entry to the registry
      *
      * @param {Object} options
-     * @return {Number} The notification's ID
+     *      The notification properties
+     *
+     * @return {Number}
+     *      The notification's ID
      */
     add: function (options) {
         var options    = this.mergeWithDefaults(options),
@@ -130,105 +166,140 @@ LocalNotification.prototype = {
     },
 
     /**
-     * Cancels the specified notification
+     * Cancels the specified notification.
      *
-     * @param {String} id of the notification
+     * @param {String} id
+     *      The ID of the notification
+     * @param {Function} callback
+     *      A function to be called after the notification has been canceled
+     * @param {Object} scope
+     *      The scope for the callback function
      */
-    cancel: function (id) {
-        cordova.exec(null, null, 'LocalNotification', 'cancel', [id.toString()]);
+    cancel: function (id, callback, scope) {
+        var id         = id.toString(),
+            callbackFn = this.createCallbackFn(callback, scope);
+
+        cordova.exec(callbackFn, null, 'LocalNotification', 'cancel', [id]);
     },
 
     /**
-     * Removes all previously registered notifications
+     * Removes all previously registered notifications.
+     *
+     * @param {Function} callback
+     *      A function to be called after all notifications have been canceled
+     * @param {Object} scope
+     *      The scope for the callback function
      */
-    cancelAll: function () {
-        cordova.exec(null, null, 'LocalNotification', 'cancelAll', []);
+    cancelAll: function (callback, scope) {
+        var callbackFn = this.createCallbackFn(callback, scope);
+
+        cordova.exec(callbackFn, null, 'LocalNotification', 'cancelAll', []);
     },
 
     /**
-     * @async
-     *
      * Retrieves a list with all currently pending notifications.
      *
      * @param {Function} callback
+     *      A callback function to be called with the list
+     * @param {Object} scope
+     *      The scope for the callback function
      */
-    getScheduledIds: function (callback) {
-        cordova.exec(callback, null, 'LocalNotification', 'getScheduledIds', []);
+    getScheduledIds: function (callback, scope) {
+        var callbackFn = this.createCallbackFn(callback, scope);
+
+        cordova.exec(callbackFn, null, 'LocalNotification', 'getScheduledIds', []);
+    },
+
+    /**
+     * Checks wether a notification with an ID is scheduled.
+     *
+     * @param {String} id
+     *      The ID of the notification
+     * @param {Function} callback
+     *      A callback function to be called with the list
+     * @param {Object} scope
+     *      The scope for the callback function
+     */
+    isScheduled: function (id, callback, scope) {
+        var id         = id.toString(),
+            callbackFn = this.createCallbackFn(callback, scope);
+
+        cordova.exec(callbackFn, null, 'LocalNotification', 'isScheduled', [id]);
+    },
+    /**
+     * @async
+     *
+     * Clears notification from notification area.
+     * Does not cancel future notifications.
+     *
+     * @param {String} id
+     *
+     */
+
+    clear: function(id, callback){
+        if(['Android'].indexOf(device.platform)){
+            cordova.exec(callback, null, 'LocalNotification', 'clear', [id.toString()]);
+        }
     },
 
     /**
      * @async
      *
-     * Checks wether a notification with an ID is scheduled.
-     *
-     * @param {String}   id
-     * @param {Function} callback
-     */
-    isScheduled: function (id, callback) {
-        cordova.exec(callback, null, 'LocalNotification', 'isScheduled', [id.toString()]);
-    },
-    /**
-     * @async
-     * 
-     * Clears notification from notification area.
-     * Does not cancel future notifications.
-     * 
-     * @param {String} id
-     * 
-     */
-    
-    clear: function(id, callback){
-    	if(['Android'].indexOf(device.platform)){
-    		cordova.exec(callback, null, 'LocalNotification', 'clear', [id.toString()]);
-    	}
-    },
-    
-    /**
-     * @async
-     * 
      * Clears all notification from notification area.
      * Does not cancel future notifications.
-     * 
+     *
      */
     clearall: function(callback){
-    	if(['Android'].indexOf(device.platform)){
-    		cordova.exec(callback, null, 'LocalNotification', 'clearall', [id.toString()]);
-    	}
+        if(['Android'].indexOf(device.platform)){
+            cordova.exec(callback, null, 'LocalNotification', 'clearall', [id.toString()]);
+        }
     },
 
     /**
      * Occurs when a notification was added.
      *
-     * @param {String} id    The ID of the notification
-     * @param {String} state Either "foreground" or "background"
-     * @param {String} json  A custom (JSON) string
+     * @param {String} id
+     *      The ID of the notification
+     * @param {String} state
+     *      Either "foreground" or "background"
+     * @param {String} json
+     *      A custom (JSON) string
      */
     onadd: function (id, state, json) {},
 
     /**
      * Occurs when the notification is triggered.
      *
-     * @param {String} id    The ID of the notification
-     * @param {String} state Either "foreground" or "background"
-     * @param {String} json  A custom (JSON) string
+     * @param {String} id
+     *      The ID of the notification
+     * @param {String} state
+     *      Either "foreground" or "background"
+     * @param {String} json
+     *      A custom (JSON) string
      */
     ontrigger: function (id, state, json) {},
 
     /**
      * Fires after the notification was clicked.
      *
-     * @param {String} id    The ID of the notification
-     * @param {String} state Either "foreground" or "background"
-     * @param {String} json  A custom (JSON) string
+     * @param {String} id
+     *      The ID of the notification
+     * @param {String} state
+     *      Either "foreground" or "background"
+     * @param {String} json
+     *      A custom (JSON) string
      */
     onclick: function (id, state, json) {},
 
     /**
      * Fires if the notification was canceled.
      *
-     * @param {String} id    The ID of the notification
-     * @param {String} state Either "foreground" or "background"
-     * @param {String} json  A custom (JSON) string
+     * @param {String} id
+     *      The ID of the notification
+     * @param {String} state
+     *      Either "foreground" or "background"
+     * @param {String} json
+     *      A custom (JSON) string
      */
     oncancel: function (id, state, json) {}
 };
@@ -236,24 +307,32 @@ LocalNotification.prototype = {
 var plugin  = new LocalNotification(),
     channel = require('cordova/channel');
 
+// Called after all 'deviceready' listener are called
 channel.deviceready.subscribe( function () {
+    // Device is ready now, the listeners are registered and all queued events
+    // can be executed now.
     cordova.exec(null, null, 'LocalNotification', 'deviceready', []);
 });
 
 channel.onCordovaReady.subscribe( function () {
+    // The cordova device plugin is ready now
     channel.onCordovaInfoReady.subscribe( function () {
         if (device.platform == 'Android') {
             channel.onPause.subscribe( function () {
+                // Necessary to set the state to `background`
                 cordova.exec(null, null, 'LocalNotification', 'pause', []);
             });
 
             channel.onResume.subscribe( function () {
+                // Necessary to set the state to `foreground`
                 cordova.exec(null, null, 'LocalNotification', 'resume', []);
             });
 
+            // Necessary to set the state to `foreground`
             cordova.exec(null, null, 'LocalNotification', 'resume', []);
         }
 
+        // Merges the platform specific properties into the default properties
         plugin.applyPlatformSpecificOptions();
     });
 });
