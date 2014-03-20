@@ -119,6 +119,16 @@ public class LocalNotification extends CordovaPlugin {
 
             return true;
         }
+        
+        if(action.equalsIgnoreCase("clearall")){
+        	clearAll();
+        	return true;
+        }
+        if(action.equalsIgnoreCase("clear")){
+        	String id = args.optString(0);
+        	clear(id);
+        	return true;
+        }
 
         if (action.equalsIgnoreCase("deviceready")) {
             cordova.getThreadPool().execute( new Runnable() {
@@ -203,13 +213,10 @@ public class LocalNotification extends CordovaPlugin {
 
         PendingIntent pi       = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
         AlarmManager am        = getAlarmManager();
-        NotificationManager nc = getNotificationManager();
 
         am.cancel(pi);
 
-        try {
-            nc.cancel(Integer.parseInt(notificationId));
-        } catch (Exception e) {}
+        clear(notificationId);
 
         fireEvent("cancel", notificationId, "");
     }
@@ -224,15 +231,42 @@ public class LocalNotification extends CordovaPlugin {
      */
     public static void cancelAll() {
         SharedPreferences settings = getSharedPreferences();
-        NotificationManager nc     = getNotificationManager();
         Map<String, ?> alarms      = settings.getAll();
         Set<String> alarmIds       = alarms.keySet();
 
         for (String alarmId : alarmIds) {
             cancel(alarmId);
         }
-
-        nc.cancelAll();
+        clearAll();
+    }
+    
+    /**
+     * Clear all notifications that were created by this plugin.
+     * 
+     * This will not remove future pending alarms.  It will only 
+     * clear alarms that are in the notification area.
+     * 
+     */
+    public static void clearAll(){
+    	NotificationManager nc     = getNotificationManager();
+    	nc.cancelAll();
+    }
+    
+    /**
+     * Clear notification that was created by this plugin.
+     * 
+     * This will not remove future pending alarms.  It will only 
+     * clear alarms that are in the notification area.
+     * 
+     * @param id
+     *          The notification ID to be check.
+     * 
+     */
+    public static void clear(String id){
+    	NotificationManager nc = getNotificationManager();
+    	try {
+            nc.cancel(Integer.parseInt(id));
+        } catch (Exception e) {}
     }
 
     /**
